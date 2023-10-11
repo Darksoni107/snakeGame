@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <style>
+    * {
+      margin: 0px;
+      padding: 0px;
+      box-sizing: border-box;
+    }
+    .container {
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      width: 90vmin;
+      height: 90vmin;
+      gap: 1px;
+      border: 1px solid lightgray;
+    }
+    .snake-head {
+      /* background-color: green; */
+      /* border-radius: 30%; */
+      border-radius: 15px 15px 0px 0px;
+      background-image: url("img/Picsart_23-10-11_15-00-00-599.jpg");
+      background-size: 100%;
+    }
+    body {
+      background-color: rgb(1, 6, 14);
+    }
+    .grid-container {
+      box-sizing: border-box;
+      margin: auto;
+      display: grid;
+      grid-template-columns: repeat(13, 1fr);
+      grid-template-rows: repeat(13, 1fr);
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        to bottom,
+        rgb(184, 183, 131),
+        rgb(85, 119, 152)
+      );
+      border: 5px solid rgb(189, 50, 50);
+      overflow: hidden;
+    }
+    .snake-body {
+      background-color: green;
+      border: 2px solid rgb(75, 108, 75);
+    }
+    .food {
+      background-color: yellow;
+      border-radius: 50%;
+      border: 1px solid black;
+      border-style: dotted;
+    }
+    .score-box {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      padding: 20px;
+      border-radius: 10px 10px 0px 0px;
+      color: white;
+      padding: 10px 20px;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 1.2rem;
+    }
+    h1 {
+      color: rgb(107, 233, 4);
+      text-align: center;
+      font-size: 1.5rem;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+  </style>
+  <body>
+    <h1>🐍Snake Game</h1>
+    <div class="container">
+      <div class="score-box">
+        <div class="score">Score:</div>
+        <div class="high-score">High Score:</div>
+      </div>
+      <div class="grid-container"></div>
+    </div>
+  </body>
+  <script>
+    // Define variables and game config.
+    // game board will continuosly update based on value below.
+    const gameBoard = document.querySelector(".grid-container");
+    const scoreBox = document.querySelector(".score");
+    let intervalId;
+    let speed = 180;
+    let snakeBody = [{ x: 2, y: 2 }];
+    let towards;
+    let preTowards;
+    let food = { x: 5, y: 5 };
+    let score = 0;
+    let highScore = 0;
+
+    // Define sounds
+    const eatSound = new Audio("audio/biteSound.mp3");
+    const hitSound = new Audio("audio/crashSound.mp3");
+    const turnSound = new Audio("audio/turnSound.mp3");
+
+    // game funciton defines below-
+
+    function drawSnake() {
+      // creating snake/ placing in grid based on the each segment co-ordinates define in snakeBody.
+      snakeBody.forEach((seg, i) => {
+        let snakeElement = document.createElement("div");
+        snakeElement.style.gridColumnStart = seg.x;
+        snakeElement.style.gridRowStart = seg.y;
+        if (i == 0) {
+          let deg;
+          towards === "right" && (deg = "90deg");
+          towards === "left" && (deg = "-90deg");
+          towards === "up" && (deg = "360deg");
+          towards === "down" && (deg = "180deg");
+          snakeElement.classList.add("snake-head");
+          snakeElement.style.transform = `rotate(${deg})`;
+        } else {
+          snakeElement.classList.add("snake-body");
+        }
+        gameBoard.append(snakeElement);
+      });
+    }
+
+    function drawFood() {
+      const foodElement = document.createElement("div");
+      foodElement.style.gridColumnStart = food.x;
+      foodElement.style.gridRowStart = food.y;
+      foodElement.classList.add("food");
+      gameBoard.appendChild(foodElement);
+    }
+
+    function snakeMove(towards) {
+      // each segment coppying his nearest segment previous position and creating illusion.
+      // but head moving based on key event.
+      if (!towards) return;
+      for (let i = snakeBody.length - 1; i > 0; i--) {
+        snakeBody[i] = { ...snakeBody[i - 1] };
+      }
+
+      towards == "right" && snakeBody[0].x++;
+      towards == "left" && snakeBody[0].x--;
+      towards == "down" && snakeBody[0].y++;
+      towards == "up" && snakeBody[0].y--;
+    }
+
+    function upadate() {
+      gameBoard.innerHTML = "";
+      snakeMove(towards);
+    }
+
+    function ifEatfood() {
+      if (snakeBody[0].x === food.x && snakeBody[0].y === food.y) {
+        eatSound.play();
+        randomFoodPlace();
+        // pushing a new seg in snakeBody array and increase the snake length
+        let newSeg = { ...snakeBody[-1] };
+        newSeg.y++;
+        snakeBody.push(newSeg);
+        incScoreAndSpeed();
+        speedInc(2);
+      }
+    }
+
+    function speedInc(rate) {
+      if (speed < 90) return "max limit reach";
+      speed -= rate;
+    }
+
+    function incScoreAndSpeed() {
+      score += 1;
+      scoreBox.innerHTML = `Score: ${score} `;
+      if (highScore < score) {
+        highScore += 1;
+        document.querySelector(
+          ".high-score"
+        ).innerHTML = `High Score: ${highScore}`;
+      }
+    }
+
+    function randomFoodPlace() {
+      // placing food at random place also insuring food is not placed on snake itself.
+      let isFoodOverl = true;
+      while (isFoodOverl) {
+        food.x = Math.floor(Math.random() * 13 + 1);
+        food.y = Math.floor(Math.random() * 13 + 1);
+        isFoodOverl = snakeBody.some((seg) => {
+          return seg.x === food.x && seg.y === food.y;
+        });
+      }
+    }
+
+    function isSnakeHitBoundry() {
+      let { x, y } = snakeBody[0];
+      if (x > 13 || x < 1 || y > 13 || y < 1) {
+        return true;
+      }
+    }
+
+    function isSnakeIntersect() {
+      const { x, y } = snakeBody[0];
+      for (let i = 1; i < snakeBody.length; i++) {
+        if (x === snakeBody[i].x && y === snakeBody[i].y) {
+          return true;
+        }
+      }
+    }
+
+    function gameOver() {
+      // playing collide sound and resetting game.
+      if (isSnakeIntersect() || isSnakeHitBoundry()) {
+        hitSound.play();
+        towards = "none";
+        setTimeout(() => {
+          alert(`🐍 game over Your 🌕 Score: ${score}`);
+          snakeBody = [{ x: 5, y: 5 }];
+          score = 0;
+          scoreBox.innerHTML = `Score: ${score} `;
+          speed = 180;
+        }, 100);
+      }
+    }
+
+    // Handling  key events -->
+    document.addEventListener("keydown", function (e) {
+      turnSound.load();
+      turnSound.play();
+      if (e.key === "ArrowRight" && preTowards !== "left") {
+        towards = "right";
+      }
+      if (e.key === "ArrowLeft" && preTowards !== "right") {
+        towards = "left";
+      }
+      if (e.key === "ArrowUp" && preTowards !== "down") {
+        towards = "up";
+      }
+      if (e.key === "ArrowDown" && preTowards !== "up") {
+        towards = "down";
+      }
+      preTowards = towards;
+    });
+
+    //Game Loop which run all funciton repetately and create animation---->
+    function gameLoop() {
+      animationFrameId = requestAnimationFrame(gameLoop);
+
+      // Call your game functions here
+      gameOver();
+      upadate();
+      drawSnake();
+      drawFood();
+      ifEatfood();
+    }
+
+    // defining and Starting  game loop.
+    // this will update the value on grid  continuosly with fixed interval.
+    let lastPaintTime = 0;
+    function gameLoop(timestamp) {
+      animationFrameId = requestAnimationFrame(gameLoop);
+      // Call your game functions here
+      if (timestamp - lastPaintTime > speed) {
+        console.log("runnig");
+        upadate();
+        drawSnake();
+        drawFood();
+        ifEatfood();
+        gameOver();
+        lastPaintTime = timestamp;
+      }
+    }
+    // Start the game loop
+    gameLoop();
+  </script>
+</html>
